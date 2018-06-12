@@ -20,8 +20,9 @@ import nnabla as nn
 import nnabla.functions as F
 import nnabla.parametric_functions as PF
 ########################################保存先の指定など#########################################################
+SCREEN_NAMES = "2018_06_10" #画像を保存するフォルダ名
 current_dir = os.path.dirname(__file__) #このファイルまでの絶対パス
-input_dir = os.path.join(current_dir,"2018_06_10") #推論を実行したいファイルを保存しておく
+input_dir = os.path.join(current_dir,SCREEN_NAMES) #Twitterから収集した画像が保存されるフォルダ
 ################################################################################################################
 #4つの鍵を入力する(両サイドの''は残す)
 # Consumer key
@@ -41,9 +42,6 @@ api = twitter.Api(consumer_key = CK,
 ##############################################tweetDownload########################################################
 NUM_PAGES       = 5   
 TWEET_PER_PAGE  = 200 
- 
-# 画像を保存するファイル名
-SCREEN_NAMES = "2018_06_10" #収集を開始した日
 
 class TwitterImageDownloader(object):
     """
@@ -132,6 +130,8 @@ class TwitterImageDownloader(object):
                 new_file_name = self.get_file(url, file_list, save_dir,max_id_list[j])
                 new_file_list.append(new_file_name)
                 print("%d / %d users, %d / %d pictures"%((i+1), num_users, (j+1), num_urls))
+        
+        new_file_list = [x for x in new_file_list if x] #空の要素を削除する.
         return new_file_list
 ###################################################推論実行########################################################
 class Predict():
@@ -272,24 +272,23 @@ def main():
     pred = Predict() #ネットワークが形成される.
     while True:
         tw = TwitterImageDownloader()
-        new_file_list = tw.download()
+        new_file_list = tw.download() #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる
 
         print("新しい画像の枚数は"+str(len(new_file_list)))
 
+        retweet_image_number = 0 #このwhileループで何回リツイートしたか
         for image_name in new_file_list:
+
             image_path = os.path.join(input_dir,image_name)
             print(image_path)
-
-            try: #入力がグレースケールだったり日本語を含んでいたりするとreshapeやcv2.imreadでエラーを返す.5時間に一回くらい起こる.
-                y = pred.pred(image_path)
-            except:
-                y = 1
+            y = pred.pred(image_path) #推論の実行
 
             if y<0.5:
                 print("イラスト"+str(y))
                 tweet_id = image_name.split("_")[0]
                 try:
                     api.PostRetweet(tweet_id)
+                    retweet_image_number += 1
                     print("リツイートしました")
                     time.sleep(1*60) #60秒休む
                 except:
@@ -297,7 +296,9 @@ def main():
             else:
                 print("その他  "+str(y))
 
-        time.sleep(5*60) # 5分休む
+        if retweet_image_number < 5:
+            sleep_time = 5 - retweet_image_number
+            time.sleep(sleep_time * 60) #画像の取得は5分以上に一回にするため
 
 if __name__ == '__main__':
     main()
