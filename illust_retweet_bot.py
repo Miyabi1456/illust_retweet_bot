@@ -249,7 +249,7 @@ class Predict():
             x = (img.shape[1] - img_width)//2
             img = img[0:img_height,x:x+img_width] #中央をトリミング
         else:
-            x_amp = img_width / size_x #x_amp<0
+            x_amp = img_width / size_x
             y_amp = x_amp
             img = cv2.resize(img,(img_width,int(size_y*y_amp)))
             y = (img.shape[0] - img_height)//2
