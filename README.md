@@ -1,2 +1,3 @@
-# illust_retweet_bot
+﻿# illust_retweet_bot
 人工知能を用いてイラストとその他を判別し,イラストのみをリツイートする
+20180627_215859

@@ -24,7 +24,7 @@ SCREEN_NAMES = "2018_06_10" #画像を保存するフォルダ名
 current_dir = os.path.dirname(__file__) #このファイルまでの絶対パス
 input_dir = os.path.join(current_dir,SCREEN_NAMES) #Twitterから収集した画像が保存されるフォルダ
 ################################################################################################################
-#4つの鍵を入力する(両サイドの''は残す)
+#4つの鍵を入力する
 # Consumer key
 CK = ""
 # Consumer secret
@@ -152,73 +152,65 @@ class Predict():
         #推論ネットワークの構築
         self.y = self.network(self.x,test=True) 
 
-    def network(self,x,test=False):
-        # Input -> 3,256,256
-        # Convolution -> 32,255,255
-        with nn.parameter_scope('Convolution'):
-            h = PF.convolution(x, 32, (2,2), (0,0))
-        # BatchNormalization_5
-        with nn.parameter_scope('BatchNormalization_5'):
-            h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test)
-        # MaxPooling_3 -> 32,127,127
-        h = F.max_pooling(h, (2,2), (2,2), True)
-        # ReLU
+    def network(self ,x, test=False):
+        # Input:x -> 3,256,256
+        # Convolution_5 -> 16,255,255
+        h = PF.convolution(x, 16, (2,2), (0,0), name='Convolution_5')
+        # BatchNormalization_9
+        h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_9')
+        # ReLU_8
         h = F.relu(h, True)
-        # Convolution_4 -> 32,126,126
-        with nn.parameter_scope('Convolution_4'):
-            h = PF.convolution(h, 32, (2,2), (0,0))
+        # Convolution_6 -> 16,254,254
+        h = PF.convolution(h, 16, (2,2), (0,0), name='Convolution_6')
+        # BatchNormalization_5
+        h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_5')
+        # ReLU_9
+        h = F.relu(h, True)
+        # Convolution_4 -> 16,253,253
+        h = PF.convolution(h, 16, (2,2), (0,0), name='Convolution_4')
         # BatchNormalization_2
-        with nn.parameter_scope('BatchNormalization_2'):
-            h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test)
-        # MaxPooling_2 -> 32,63,63
-        h = F.max_pooling(h, (2,2), (2,2))
+        h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_2')
+        # MaxPooling_2 -> 16,127,127
+        h = F.max_pooling(h, (2,2), (2,2), False)
         # ReLU_2
         h = F.relu(h, True)
 
-        # Convolution_2 -> 32,62,62
-        with nn.parameter_scope('Convolution_2'):
-            h = PF.convolution(h, 32, (2,2), (0,0))
+        # Convolution_2 -> 32,126,126
+        h = PF.convolution(h, 32, (2,2), (0,0), name='Convolution_2')
         # BatchNormalization_4
-        with nn.parameter_scope('BatchNormalization_4'):
-            h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test)
+        h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_4')
         # ReLU_3
         h = F.relu(h, True)
-        # MaxPooling -> 32,31,31
-        h = F.max_pooling(h, (2,2), (2,2))
-        # Convolution_3 -> 32,30,30
-        with nn.parameter_scope('Convolution_3'):
-            h = PF.convolution(h, 32, (2,2), (0,0))
+        # MaxPooling -> 32,63,63
+        h = F.max_pooling(h, (2,2), (2,2), False)
+        # Convolution_3 -> 64,62,62
+        h = PF.convolution(h, 64, (2,2), (0,0), name='Convolution_3')
         # BatchNormalization
-        with nn.parameter_scope('BatchNormalization'):
-            h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test)
+        h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization')
         # ReLU_4
         h = F.relu(h, True)
-        # MaxPooling_4 -> 32,15,15
-        h = F.max_pooling(h, (2,2), (2,2))
-
-        # Affine_2 -> 256
-        with nn.parameter_scope('Affine_2'):
-            h = PF.affine(h, (256,))
-        # BatchNormalization_6
-        with nn.parameter_scope('BatchNormalization_6'):
-            h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test)
-        # ReLU_5
-        h = F.relu(h, True)
-        # Affine_3 -> 128
-        with nn.parameter_scope('Affine_3'):
-            h = PF.affine(h, (128,))
+        # MaxPooling_4 -> 64,31,31
+        h = F.max_pooling(h, (2,2), (2,2), False)
+        # Convolution_7 -> 128,30,30
+        h = PF.convolution(h, 128, (2,2), (0,0), name='Convolution_7')
         # BatchNormalization_7
-        with nn.parameter_scope('BatchNormalization_7'):
-            h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test)
+        h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_7')
         # ReLU_6
         h = F.relu(h, True)
+        # MaxPooling_3 -> 128,15,15
+        h = F.max_pooling(h, (2,2), (2,2), False)
+
+        # Affine_2 -> 256
+        h = PF.affine(h, (256,), name='Affine_2')
+        # BatchNormalization_6
+        h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_6')
+        # ReLU_5
+        h = F.relu(h, True)
         # Affine -> 1
-        with nn.parameter_scope('Affine'):
-            h = PF.affine(h, (1,))
+        h = PF.affine(h, (1,), name='Affine')
         # BatchNormalization_3
-        with nn.parameter_scope('BatchNormalization_3'):
-            h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test)
-        # Sigmoid
+        h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_3')
+        # y'
         h = F.sigmoid(h)
         return h
 
@@ -281,7 +273,12 @@ def main():
 
             image_path = os.path.join(input_dir,image_name)
             print(image_path)
-            y = pred.pred(image_path) #推論の実行
+            
+            try:
+                y = pred.pred(image_path) #推論の実行
+            except:
+                y = 1
+                print("エラーが発生しました")
 
             if y<0.5:
                 print("イラスト"+str(y))
