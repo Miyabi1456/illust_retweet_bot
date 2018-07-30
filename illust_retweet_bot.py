@@ -152,74 +152,74 @@ class Predict():
         #推論ネットワークの構築
         self.y = self.network(self.x,test=True) 
 
-    def network(self, x, test=False):
+    def network(self ,x, test=False):
         # Input:x -> 3,256,256
+        # ImageAugmentation
+        h = F.image_augmentation(x, (3,256,256), (0,0), 1, 1, 0, 1, 0, True, True, 0, False, 1, 0.5, False, 0)
         # Convolution_5 -> 16,255,255
-        h = PF.convolution(x, 16, (2,2), (0,0), name='Convolution_5')
+        h = PF.convolution(h, 16, (2,2), (0,0), name='Convolution_5')
         # BatchNormalization_9
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_9')
-        # ReLU_8
-        h = F.relu(h, True)
+        # PReLU_8
+        h = PF.prelu(h, 1, False, name='PReLU_8')
         # Convolution_6 -> 16,254,254
         h = PF.convolution(h, 16, (2,2), (0,0), name='Convolution_6')
         # BatchNormalization_5
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_5')
-        # ReLU_9
-        h = F.relu(h, True)
+        # PReLU_7
+        h = PF.prelu(h, 1, False, name='PReLU_7')
         # Convolution_4 -> 16,253,253
         h = PF.convolution(h, 16, (2,2), (0,0), name='Convolution_4')
         # BatchNormalization_2
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_2')
+        # PReLU_6
+        h = PF.prelu(h, 1, False, name='PReLU_6')
         # MaxPooling_2 -> 16,127,127
         h = F.max_pooling(h, (2,2), (2,2), False)
-        # ReLU_2
-        h = F.relu(h, True)
 
         # Convolution_2 -> 32,126,126
         h = PF.convolution(h, 32, (2,2), (0,0), name='Convolution_2')
         # BatchNormalization_4
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_4')
-        # ReLU_3
-        h = F.relu(h, True)
+        # PReLU_5
+        h = PF.prelu(h, 1, False, name='PReLU_5')
         # MaxPooling -> 32,63,63
         h = F.max_pooling(h, (2,2), (2,2), False)
         # Convolution_3 -> 64,62,62
         h = PF.convolution(h, 64, (2,2), (0,0), name='Convolution_3')
         # BatchNormalization
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization')
-        # ReLU_4
-        h = F.relu(h, True)
+        # PReLU_4
+        h = PF.prelu(h, 1, False, name='PReLU_4')
         # MaxPooling_4 -> 64,31,31
         h = F.max_pooling(h, (2,2), (2,2), False)
         # Convolution_7 -> 128,30,30
         h = PF.convolution(h, 128, (2,2), (0,0), name='Convolution_7')
         # BatchNormalization_7
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_7')
-        # ReLU_6
-        h = F.relu(h, True)
+        # PReLU_3
+        h = PF.prelu(h, 1, False, name='PReLU_3')
         # MaxPooling_3 -> 128,15,15
         h = F.max_pooling(h, (2,2), (2,2), False)
         # Convolution_8 -> 256,14,14
         h = PF.convolution(h, 256, (2,2), (0,0), name='Convolution_8')
         # BatchNormalization_10
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_10')
-        # ReLU_7
-        h = F.relu(h, True)
+        # PReLU_2
+        h = PF.prelu(h, 1, False, name='PReLU_2')
         # MaxPooling_5 -> 256,7,7
         h = F.max_pooling(h, (2,2), (2,2), False)
-        # Convolution -> 256,6,6
-        h = PF.convolution(h, 256, (2,2), (0,0), name='Convolution')
+        # Convolution -> 512,6,6
+        h = PF.convolution(h, 512, (2,2), (0,0), name='Convolution')
         # BatchNormalization_8
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_8')
-        # ReLU
-        h = F.relu(h, True)
-        # AveragePooling -> 256,1,1
+        # PReLU
+        h = PF.prelu(h, 1, False, name='PReLU')
+        # AveragePooling -> 512,1,1
         h = F.average_pooling(h, (6,6), (6,6))
 
         # BatchNormalization_6
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_6')
-        # ReLU_5
-        h = F.relu(h, True)
         # Affine -> 1
         h = PF.affine(h, (1,), name='Affine')
         # BatchNormalization_3
