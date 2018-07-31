@@ -154,10 +154,8 @@ class Predict():
 
     def network(self ,x, test=False):
         # Input:x -> 3,256,256
-        # ImageAugmentation
-        h = F.image_augmentation(x, (3,256,256), (0,0), 1, 1, 0, 1, 0, True, True, 0, False, 1, 0.5, False, 0)
         # Convolution_5 -> 16,255,255
-        h = PF.convolution(h, 16, (2,2), (0,0), name='Convolution_5')
+        h = PF.convolution(x, 16, (2,2), (0,0), name='Convolution_5')
         # BatchNormalization_9
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_9')
         # PReLU_8
@@ -176,7 +174,6 @@ class Predict():
         h = PF.prelu(h, 1, False, name='PReLU_6')
         # MaxPooling_2 -> 16,127,127
         h = F.max_pooling(h, (2,2), (2,2), False)
-
         # Convolution_2 -> 32,126,126
         h = PF.convolution(h, 32, (2,2), (0,0), name='Convolution_2')
         # BatchNormalization_4
@@ -185,6 +182,7 @@ class Predict():
         h = PF.prelu(h, 1, False, name='PReLU_5')
         # MaxPooling -> 32,63,63
         h = F.max_pooling(h, (2,2), (2,2), False)
+
         # Convolution_3 -> 64,62,62
         h = PF.convolution(h, 64, (2,2), (0,0), name='Convolution_3')
         # BatchNormalization
@@ -215,11 +213,13 @@ class Predict():
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_8')
         # PReLU
         h = PF.prelu(h, 1, False, name='PReLU')
+
         # AveragePooling -> 512,1,1
         h = F.average_pooling(h, (6,6), (6,6))
-
         # BatchNormalization_6
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_6')
+        # PReLU_9
+        h = PF.prelu(h, 1, False, name='PReLU_9')
         # Affine -> 1
         h = PF.affine(h, (1,), name='Affine')
         # BatchNormalization_3
