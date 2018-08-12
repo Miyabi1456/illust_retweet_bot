@@ -236,8 +236,7 @@ class Predict():
         """
         size_x = 0 #画像の横解像度
         size_y = 0 #画像の縦解像度
-        x_amp = 1.0 #リサイズ倍率
-        y_amp = 1.0 #リサイズ倍率
+        amp = 1.0 #リサイズ倍率
         img_width = 256 #目的サイズ
         img_height = 256 #目的サイズ
         x = 0 #トリミング始点
@@ -249,17 +248,19 @@ class Predict():
 
         #短辺側を基準にリサイズ
         if size_x > size_y:
-            y_amp = img_height / size_y
-            x_amp = y_amp
-            img = cv2.resize(img,(int(size_x*x_amp),img_height))
+            amp = img_height / size_y
+            img = cv2.resize(img,(int(size_x*amp),img_height))
             x = (img.shape[1] - img_width)//2
             img = img[0:img_height,x:x+img_width] #中央をトリミング
-        else:
-            x_amp = img_width / size_x
-            y_amp = x_amp
-            img = cv2.resize(img,(img_width,int(size_y*y_amp)))
+
+        elif size_x < size_y:
+            amp = img_width / size_x
+            img = cv2.resize(img,(img_width,int(size_y*amp)))
             y = (img.shape[0] - img_height)//2
             img = img[y:y+img_height,0:img_width] #中央をトリミング
+
+        else: #size_x = size_y
+            img = cv2.resize(img,(img_width,img_height))
 
         img = img / 255.0 #学習時に正規化したための処理
         img = img.transpose(2,0,1) #openCVは(高さ,幅,色)なので転置する必要あり.
