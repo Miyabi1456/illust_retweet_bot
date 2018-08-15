@@ -154,68 +154,68 @@ class Predict():
 
     def network(self, x, test=False):
         # Input:x -> 3,256,256
-        # Convolution_5 -> 16,255,255
-        h = PF.convolution(x, 16, (2,2), (0,0), name='Convolution_5')
+        # Convolution_5 -> 16,256,256
+        h = PF.convolution(x, 16, (3,3), (1,1), name='Convolution_5')
         # BatchNormalization_9
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_9')
         # PReLU_8
         h = PF.prelu(h, 1, False, name='PReLU_8')
-        # Convolution_6 -> 16,254,254
-        h = PF.convolution(h, 16, (2,2), (0,0), name='Convolution_6')
+        # Convolution_6
+        h = PF.convolution(h, 16, (3,3), (1,1), name='Convolution_6')
         # BatchNormalization_5
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_5')
         # PReLU_7
         h = PF.prelu(h, 1, False, name='PReLU_7')
-        # Convolution_4 -> 16,253,253
-        h = PF.convolution(h, 16, (2,2), (0,0), name='Convolution_4')
+        # Convolution_4
+        h = PF.convolution(h, 16, (3,3), (1,1), name='Convolution_4')
         # BatchNormalization_2
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_2')
         # PReLU_6
         h = PF.prelu(h, 1, False, name='PReLU_6')
-        # MaxPooling_2 -> 16,127,127
+        # MaxPooling_2 -> 16,128,128
         h = F.max_pooling(h, (2,2), (2,2), False)
-        # Convolution_2 -> 32,126,126
-        h = PF.convolution(h, 32, (2,2), (0,0), name='Convolution_2')
+        # Convolution_2 -> 32,128,128
+        h = PF.convolution(h, 32, (3,3), (1,1), name='Convolution_2')
         # BatchNormalization_4
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_4')
         # PReLU_5
         h = PF.prelu(h, 1, False, name='PReLU_5')
-        # MaxPooling -> 32,63,63
+        # MaxPooling -> 32,64,64
         h = F.max_pooling(h, (2,2), (2,2), False)
 
-        # Convolution_3 -> 64,62,62
-        h = PF.convolution(h, 64, (2,2), (0,0), name='Convolution_3')
+        # Convolution_3 -> 64,64,64
+        h = PF.convolution(h, 64, (3,3), (1,1), name='Convolution_3')
         # BatchNormalization
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization')
         # PReLU_4
         h = PF.prelu(h, 1, False, name='PReLU_4')
-        # MaxPooling_4 -> 64,31,31
+        # MaxPooling_4 -> 64,32,32
         h = F.max_pooling(h, (2,2), (2,2), False)
-        # Convolution_7 -> 128,30,30
-        h = PF.convolution(h, 128, (2,2), (0,0), name='Convolution_7')
+        # Convolution_7 -> 128,32,32
+        h = PF.convolution(h, 128, (3,3), (1,1), name='Convolution_7')
         # BatchNormalization_7
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_7')
         # PReLU_3
         h = PF.prelu(h, 1, False, name='PReLU_3')
-        # MaxPooling_3 -> 128,15,15
+        # MaxPooling_3 -> 128,16,16
         h = F.max_pooling(h, (2,2), (2,2), False)
-        # Convolution_8 -> 256,14,14
-        h = PF.convolution(h, 256, (2,2), (0,0), name='Convolution_8')
+        # Convolution_8 -> 256,16,16
+        h = PF.convolution(h, 256, (3,3), (1,1), name='Convolution_8')
         # BatchNormalization_10
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_10')
         # PReLU_2
         h = PF.prelu(h, 1, False, name='PReLU_2')
-        # MaxPooling_5 -> 256,7,7
+        # MaxPooling_5 -> 256,8,8
         h = F.max_pooling(h, (2,2), (2,2), False)
-        # Convolution -> 512,6,6
-        h = PF.convolution(h, 512, (2,2), (0,0), name='Convolution')
+        # Convolution -> 512,8,8
+        h = PF.convolution(h, 512, (3,3), (1,1), name='Convolution')
         # BatchNormalization_8
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_8')
         # PReLU
         h = PF.prelu(h, 1, False, name='PReLU')
 
         # AveragePooling -> 512,1,1
-        h = F.average_pooling(h, (6,6), (6,6))
+        h = F.average_pooling(h, (8,8), (8,8))
         # BatchNormalization_6
         h = PF.batch_normalization(h, (1,), 0.9, 0.0001, not test, name='BatchNormalization_6')
         # PReLU_9
@@ -227,6 +227,7 @@ class Predict():
         # y'
         h = F.sigmoid(h)
         return h
+
         
     def image_preproccess(self, image_path):
         """
