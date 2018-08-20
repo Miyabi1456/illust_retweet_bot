@@ -46,10 +46,12 @@ class TwitterImageDownloader(object):
         super(TwitterImageDownloader, self).__init__()
         self.twitter =Twython(app_key=CK, app_secret=CS, oauth_token=ATK, oauth_token_secret=ATS)
      
-    def get_timeline(self):
-        max_id = ''
+    def get_timeline(self, since_id):
+        max_id = ""
+        pre_since_id = since_id
         media_id_list = []
         url_list = []
+
         for i in range(NUM_PAGES):
             try:
                 print('getting timeline :' + str(i+1) + 'page')
@@ -60,15 +62,21 @@ class TwitterImageDownloader(object):
                 break
             else:
                 for result in tw_result:
-                    max_id = result['id']
+
+                    max_id = result["id"] #最後に読み込んだツイートID
+                    if i == 0:
+                        since_id = result["id"] #最初に読み込んだツイートID
+
+                    if result["id"] == pre_since_id and i != 0: #前にこの関数を実行したときに最初に読み込んだツイートIDと比較する.
+                        break
+
                     if 'media' in result['entities']:
                         media = result['extended_entities']['media']
                         for url in media:
                             url_list.append(url['media_url'])
                             media_id_list.append(max_id) #画像つきのツイートのtweet_id
-            if len(tw_result) < TWEET_PER_PAGE:
-                break
-        return url_list, media_id_list
+
+        return url_list, media_id_list ,since_id
  
     def create_folder(self, save_dir):
         try:
@@ -102,12 +110,12 @@ class TwitterImageDownloader(object):
 
         return new_file_name
  
-    def download(self):
+    def download(self, since_id):
         new_file_list = []
         save_dir  = os.path.join(current_dir, save_dir_name)
         file_list = self.create_folder(save_dir)
 
-        url_list, media_id_list = self.get_timeline()
+        url_list, media_id_list, since_id = self.get_timeline(since_id)
         num_urls = len(url_list)
         
         for j, url in enumerate(url_list):
@@ -117,7 +125,7 @@ class TwitterImageDownloader(object):
         
         new_file_list = [x for x in new_file_list if x] #空の要素を削除する.
 
-        return new_file_list
+        return new_file_list ,since_id
 
 ###################################################推論実行########################################################
 class Predict():
@@ -265,10 +273,11 @@ class Predict():
 def main():
     pred = Predict() #ネットワークが形成される.
     api = twitter.Api(consumer_key = CK, consumer_secret = CS, access_token_key = ATK, access_token_secret = ATS)
+    since_id = ""
 
     while True:
         tw = TwitterImageDownloader()
-        new_file_list = tw.download() #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる
+        new_file_list, since_id = tw.download(since_id) #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる
 
         print("新しい画像の枚数は"+str(len(new_file_list)))
 
