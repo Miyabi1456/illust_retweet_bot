@@ -20,9 +20,9 @@ import nnabla as nn
 import nnabla.functions as F
 import nnabla.parametric_functions as PF
 ########################################保存先の指定など#########################################################
-SCREEN_NAMES = "2018_06_10" #画像を保存するフォルダ名
+save_dir_name = "2018_06_10" #画像を保存するフォルダ名
 current_dir = os.path.dirname(__file__) #このファイルまでの絶対パス
-input_dir = os.path.join(current_dir,SCREEN_NAMES) #Twitterから収集した画像が保存されるフォルダ
+input_dir = os.path.join(current_dir,save_dir_name) #Twitterから収集した画像が保存されるフォルダ
 ################################################################################################################
 #4つの鍵を入力する
 # Consumer key
@@ -33,14 +33,8 @@ CS = ""
 ATK = ""
 # Access token secret
 ATS = ""
-
-api = twitter.Api(consumer_key = CK,
-                  consumer_secret = CS,
-                  access_token_key = ATK,
-                  access_token_secret = ATS
-                  )
 ##############################################tweetDownload########################################################
-NUM_PAGES       = 5   
+NUM_PAGES       = 4   
 TWEET_PER_PAGE  = 200 
 
 class TwitterImageDownloader(object):
@@ -51,20 +45,14 @@ class TwitterImageDownloader(object):
     def __init__(self):
         super(TwitterImageDownloader, self).__init__()
         self.twitter =Twython(app_key=CK, app_secret=CS, oauth_token=ATK, oauth_token_secret=ATS)
- 
-    def read_ids(self):
-        ids_all = [line.replace('@', '') for line in SCREEN_NAMES.splitlines() if line]
-        ids = sorted(list(set(ids_all)))
-        return ids
      
-    def get_timeline(self, screen_name):
+    def get_timeline(self):
         max_id = ''
-        max_id_list = []
+        media_id_list = []
         url_list = []
         for i in range(NUM_PAGES):
             try:
-                print('getting timeline : @', screen_name, (i+1), 'page')
-                #tw_result = (self.twitter.get_user_timeline(screen_name=screen_name, count=TWEET_PER_PAGE, max_id=max_id) if max_id else self.twitter.get_user_timeline(screen_name=screen_name, count=TWEET_PER_PAGE))
+                print('getting timeline :' + str(i+1) + 'page')
                 tw_result = (self.twitter.get_home_timeline(count=TWEET_PER_PAGE, max_id=max_id) if max_id else self.twitter.get_home_timeline(count=TWEET_PER_PAGE))
                 time.sleep(5)
             except Exception as e:
@@ -77,10 +65,10 @@ class TwitterImageDownloader(object):
                         media = result['extended_entities']['media']
                         for url in media:
                             url_list.append(url['media_url'])
-                            max_id_list.append(max_id) #画像つきのツイートのtweet id
+                            media_id_list.append(max_id) #画像つきのツイートのtweet_id
             if len(tw_result) < TWEET_PER_PAGE:
                 break
-        return url_list,max_id_list
+        return url_list, media_id_list
  
     def create_folder(self, save_dir):
         try:
@@ -90,13 +78,11 @@ class TwitterImageDownloader(object):
         file_list = os.listdir(save_dir)
         return file_list
  
-    def get_file(self, url, file_list, save_dir,tweet_id):
+    def get_file(self, url, file_list, save_dir, tweet_id):
         new_file_name = ""
-        file_name = url[url.rfind('/')+1:]
-        file_name = str(tweet_id) + "_" +file_name #上のファイル名にtweetID_を追加する.これをリツイート時に利用する.
+        file_name = str(tweet_id) + "_" + url[url.rfind('/')+1:] #tweet_ID_URL.jpg. これをリツイート時に利用する.
         url_large = '%s:large'%(url)
         if not file_name in file_list:
-            new_file_name = file_name #新たに保存したファイル.保存されたファイルは除外する.
             save_path = os.path.join(save_dir, file_name)
             try:
                 print("download", url_large)
@@ -109,6 +95,7 @@ class TwitterImageDownloader(object):
                 img = open(save_path, 'wb')
                 img.write(img_read)
                 img.close()
+                new_file_name = file_name #新たに保存したファイル.保存されたファイルは除外する.
                 time.sleep(1)
         else:
             print("file already exists", file_name)
@@ -117,22 +104,21 @@ class TwitterImageDownloader(object):
  
     def download(self):
         new_file_list = []
-        screen_name_list = self.read_ids()
-        num_users = len(screen_name_list)
-        for i, screen_name in enumerate(screen_name_list):
-            save_dir  = os.path.join(current_dir, screen_name)
-            file_list = self.create_folder(save_dir)
- 
-            url_list,max_id_list = self.get_timeline(screen_name)
-            num_urls = len(url_list)
-            
-            for j, url in enumerate(url_list):
-                new_file_name = self.get_file(url, file_list, save_dir,max_id_list[j])
-                new_file_list.append(new_file_name)
-                print("%d / %d users, %d / %d pictures"%((i+1), num_users, (j+1), num_urls))
+        save_dir  = os.path.join(current_dir, save_dir_name)
+        file_list = self.create_folder(save_dir)
+
+        url_list, media_id_list = self.get_timeline()
+        num_urls = len(url_list)
+        
+        for j, url in enumerate(url_list):
+            new_file_name = self.get_file(url, file_list, save_dir, media_id_list[j])
+            new_file_list.append(new_file_name)
+            print(str(j+1) + "/" + str(num_urls) + "pictures")
         
         new_file_list = [x for x in new_file_list if x] #空の要素を削除する.
+
         return new_file_list
+
 ###################################################推論実行########################################################
 class Predict():
     """
@@ -278,15 +264,16 @@ class Predict():
 
 def main():
     pred = Predict() #ネットワークが形成される.
+    api = twitter.Api(consumer_key = CK, consumer_secret = CS, access_token_key = ATK, access_token_secret = ATS)
+
     while True:
         tw = TwitterImageDownloader()
         new_file_list = tw.download() #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる
 
         print("新しい画像の枚数は"+str(len(new_file_list)))
 
-        retweet_image_number = 0 #このwhileループで何回リツイートしたか
+        retweet_image_number = 0 #このforループで何回リツイートしたか
         for image_name in new_file_list:
-
             image_path = os.path.join(input_dir,image_name)
             print(image_path)
             
@@ -303,15 +290,15 @@ def main():
                     api.PostRetweet(tweet_id)
                     retweet_image_number += 1
                     print("リツイートしました")
-                    time.sleep(1*60) #60秒休む
+                    time.sleep(40) #40秒休む
                 except:
                     print("リツイート済み")
             else:
                 print("その他  "+str(y))
 
-        if retweet_image_number < 5:
-            sleep_time = 5 - retweet_image_number
-            time.sleep(sleep_time * 60) #画像の取得は5分以上に一回にするため
+        if retweet_image_number < 8:
+            sleep_time = 5*60 - retweet_image_number*40
+            time.sleep(sleep_time) #画像の取得は5分以上に一回にするため
 
 if __name__ == '__main__':
     main()
