@@ -34,9 +34,6 @@ ATK = ""
 # Access token secret
 ATS = ""
 ##############################################tweetDownload########################################################
-NUM_PAGES       = 4   
-TWEET_PER_PAGE  = 200 
-
 class TwitterImageDownloader(object):
     """
     Twitterから画像をダウンロードする.以下のサイトからスクリプトを頂いて,TweetIDも返すように変更.
@@ -46,37 +43,31 @@ class TwitterImageDownloader(object):
         super(TwitterImageDownloader, self).__init__()
         self.twitter =Twython(app_key=CK, app_secret=CS, oauth_token=ATK, oauth_token_secret=ATS)
      
-    def get_timeline(self, since_id):
-        max_id = ""
-        pre_since_id = since_id
+    def get_timeline(self):
+        num_pages       = 3
+        tweet_per_page  = 200 #一度に読み込むツイート数 = num_pages * tweet_per_page
+
+        max_id = ''
         media_id_list = []
         url_list = []
-
-        for i in range(NUM_PAGES):
+        for i in range(num_pages):
             try:
                 print('getting timeline :' + str(i+1) + 'page')
-                tw_result = (self.twitter.get_home_timeline(count=TWEET_PER_PAGE, max_id=max_id) if max_id else self.twitter.get_home_timeline(count=TWEET_PER_PAGE))
+                tw_result = (self.twitter.get_home_timeline(count=tweet_per_page, max_id=max_id) if max_id else self.twitter.get_home_timeline(count=tweet_per_page))
                 time.sleep(5)
             except Exception as e:
                 print("timeline get error ", e)
                 break
             else:
                 for result in tw_result:
-
-                    max_id = result["id"] #最後に読み込んだツイートID
-                    if i == 0:
-                        since_id = result["id"] #最初に読み込んだツイートID
-
-                    if result["id"] == pre_since_id and i != 0: #前にこの関数を実行したときに最初に読み込んだツイートIDと比較する.
-                        break
-
+                    max_id = result['id']
                     if 'media' in result['entities']:
                         media = result['extended_entities']['media']
                         for url in media:
                             url_list.append(url['media_url'])
                             media_id_list.append(max_id) #画像つきのツイートのtweet_id
 
-        return url_list, media_id_list ,since_id
+        return url_list, media_id_list
  
     def create_folder(self, save_dir):
         try:
@@ -110,12 +101,12 @@ class TwitterImageDownloader(object):
 
         return new_file_name
  
-    def download(self, since_id):
+    def download(self):
         new_file_list = []
         save_dir  = os.path.join(current_dir, save_dir_name)
         file_list = self.create_folder(save_dir)
 
-        url_list, media_id_list, since_id = self.get_timeline(since_id)
+        url_list, media_id_list = self.get_timeline()
         num_urls = len(url_list)
         
         for j, url in enumerate(url_list):
@@ -125,7 +116,7 @@ class TwitterImageDownloader(object):
         
         new_file_list = [x for x in new_file_list if x] #空の要素を削除する.
 
-        return new_file_list ,since_id
+        return new_file_list
 
 ###################################################推論実行########################################################
 class Predict():
@@ -273,16 +264,15 @@ class Predict():
 def main():
     pred = Predict() #ネットワークが形成される.
     api = twitter.Api(consumer_key = CK, consumer_secret = CS, access_token_key = ATK, access_token_secret = ATS)
-    since_id = ""
 
     while True:
         tw = TwitterImageDownloader()
-        new_file_list, since_id = tw.download(since_id) #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる
+        new_file_list = tw.download() #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる.
 
         print("新しい画像の枚数は"+str(len(new_file_list)))
 
         retweet_image_number = 0 #このforループで何回リツイートしたか
-        for image_name in new_file_list:
+        for i, image_name in enumerate(new_file_list):
             image_path = os.path.join(input_dir,image_name)
             print(image_path)
             
@@ -293,21 +283,21 @@ def main():
                 print("エラーが発生しました")
 
             if y<0.5:
-                print("イラスト"+str(y))
+                print(str(i+1) + "/" + str(len(new_file_list)) + "イラスト" + str(y))
                 tweet_id = image_name.split("_")[0]
                 try:
                     api.PostRetweet(tweet_id)
                     retweet_image_number += 1
                     print("リツイートしました")
-                    time.sleep(40) #40秒休む
+                    time.sleep(40) #40秒休む 36秒以下にするとAPI制限にかかる.
                 except:
                     print("リツイート済み")
             else:
-                print("その他  "+str(y))
+                print(str(i+1) + "/" + str(len(new_file_list)) + "その他  "+str(y))
 
-        if retweet_image_number < 8:
-            sleep_time = 5*60 - retweet_image_number*40
-            time.sleep(sleep_time) #画像の取得は5分以上に一回にするため
+        if retweet_image_number < 5:
+            sleep_time = 3*60 - retweet_image_number*40
+            time.sleep(sleep_time) #タイムラインの読み込みは15分に15回が上限. sleep_time = num_pages*60 - retweet_image_number*(ツイート後の休止時間)
 
 if __name__ == '__main__':
     main()
