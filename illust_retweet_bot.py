@@ -19,6 +19,7 @@ import numpy as np
 import nnabla as nn
 import nnabla.functions as F
 import nnabla.parametric_functions as PF
+import multiprocessing as mp
 ########################################保存先の指定など#########################################################
 save_dir_name = "2018_06_10" #画像を保存するフォルダ名
 current_dir = os.path.dirname(__file__) #このファイルまでの絶対パス
@@ -33,26 +34,25 @@ CS = ""
 ATK = ""
 # Access token secret
 ATS = ""
-##############################################tweetDownload########################################################
-class TwitterImageDownloader(object):
+################################################################################################################
+
+class TwitterImageDownloader():
     """
-    Twitterから画像をダウンロードする.以下のサイトからスクリプトを頂いて,TweetIDも返すように変更.
-    https://qiita.com/imenurok/items/78d25e892c6557d24810
+    HomeTimeLineからツイートを取得し、画像つきのTweetIDを抽出する.
     """
     def __init__(self):
-        super(TwitterImageDownloader, self).__init__()
         self.twitter =Twython(app_key=CK, app_secret=CS, oauth_token=ATK, oauth_token_secret=ATS)
      
     def get_timeline(self):
         num_pages       = 3
         tweet_per_page  = 200 #一度に読み込むツイート数 = num_pages * tweet_per_page
 
-        max_id = ''
+        max_id = ""
         media_id_list = []
         url_list = []
         for i in range(num_pages):
             try:
-                print('getting timeline :' + str(i+1) + 'page')
+                print("getting hometimeline :" + str(i+1) + "page")
                 tw_result = (self.twitter.get_home_timeline(count=tweet_per_page, max_id=max_id) if max_id else self.twitter.get_home_timeline(count=tweet_per_page))
                 time.sleep(5)
             except Exception as e:
@@ -60,11 +60,11 @@ class TwitterImageDownloader(object):
                 break
             else:
                 for result in tw_result:
-                    max_id = result['id']
-                    if 'media' in result['entities']:
-                        media = result['extended_entities']['media']
+                    max_id = result["id"]
+                    if 'media' in result["entities"]:
+                        media = result["extended_entities"]["media"]
                         for url in media:
-                            url_list.append(url['media_url'])
+                            url_list.append(url["media_url"])
                             media_id_list.append(max_id) #画像つきのツイートのtweet_id
 
         return url_list, media_id_list
@@ -73,14 +73,14 @@ class TwitterImageDownloader(object):
         try:
             os.mkdir(save_dir)
         except Exception as e:
-            print('cannot make dir', e)
+            print("cannot make dir", e)
         file_list = os.listdir(save_dir)
         return file_list
  
     def get_file(self, url, file_list, save_dir, tweet_id):
         new_file_name = ""
-        file_name = str(tweet_id) + "_" + url[url.rfind('/')+1:] #tweet_ID_URL.jpg. これをリツイート時に利用する.
-        url_large = '%s:large'%(url)
+        file_name = str(tweet_id) + "_" + url[url.rfind("/")+1:] #tweet_ID_URL.jpg. これをリツイート時に利用する.
+        url_large = "%s:large"%(url)
         if not file_name in file_list:
             save_path = os.path.join(save_dir, file_name)
             try:
@@ -118,7 +118,6 @@ class TwitterImageDownloader(object):
 
         return new_file_list
 
-###################################################推論実行########################################################
 class Predict():
     """
     与えられた画像に対して推論を行う.
@@ -260,21 +259,19 @@ class Predict():
 
         return self.y.d[0]
 ###################################################################################################################
-
-def main():
+def sub_process(que):
+    """
+    タイムラインから画像を取得し、その画像に対して推論を行い、イラストのTweetIDをキューに追加する動作を繰り返す.
+    """
     pred = Predict() #ネットワークが形成される.
-    api = twitter.Api(consumer_key = CK, consumer_secret = CS, access_token_key = ATK, access_token_secret = ATS)
+    tw = TwitterImageDownloader()
 
     while True:
-        tw = TwitterImageDownloader()
+        start_time = time.time()
         new_file_list = tw.download() #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる.
 
-        print("新しい画像の枚数は"+str(len(new_file_list)))
-
-        retweet_image_number = 0 #このforループで何回リツイートしたか
-        for i, image_name in enumerate(new_file_list):
+        for image_name in new_file_list:
             image_path = os.path.join(input_dir,image_name)
-            print(image_path)
             
             try:
                 y = pred.pred(image_path) #推論の実行
@@ -282,22 +279,32 @@ def main():
                 y = 1
                 print("エラーが発生しました")
 
-            if y<0.5:
-                print(str(i+1) + "/" + str(len(new_file_list)) + "イラスト" + str(y))
+            if y<0.5: #イラスト
                 tweet_id = image_name.split("_")[0]
-                try:
-                    api.PostRetweet(tweet_id)
-                    retweet_image_number += 1
-                    print("リツイートしました")
-                    time.sleep(40) #40秒休む 36秒以下にするとAPI制限にかかる.
-                except:
-                    print("リツイート済み")
-            else:
-                print(str(i+1) + "/" + str(len(new_file_list)) + "その他  "+str(y))
+                que.put(tweet_id)
 
-        if retweet_image_number < 5:
-            sleep_time = 3*60 - retweet_image_number*40
-            time.sleep(sleep_time) #タイムラインの読み込みは15分に15回が上限. sleep_time = num_pages*60 - retweet_image_number*(ツイート後の休止時間)
+        twitterAPI_limit_time = 180 - (time.time() - start_time) #HomeTimeLineの読み込みは60秒に1回.あと何秒待つ必要があるか.
+        if twitterAPI_limit_time > 0:
+            time.sleep(twitterAPI_limit_time)
+
+def main():
+    api = twitter.Api(consumer_key = CK, consumer_secret = CS, access_token_key = ATK, access_token_secret = ATS)
+
+    que = mp.Queue()
+    illust_pred = mp.Process(target = sub_process, args = (que,))
+    illust_pred.start() #サブプロセスを開始
+
+    while True:
+        print("残りのキュー:" + str(que.qsize()))
+
+        try:
+            tweet_id = que.get()
+            api.PostRetweet(tweet_id)
+            print(str(tweet_id) + ":リツイートしました")
+            time.sleep(36) #36秒以下にするとAPI制限にかかる.
+        except:
+            print("リツイート済み")
+
 
 if __name__ == '__main__':
     main()
