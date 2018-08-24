@@ -44,7 +44,7 @@ class TwitterImageDownloader():
         self.twitter =Twython(app_key=CK, app_secret=CS, oauth_token=ATK, oauth_token_secret=ATS)
      
     def get_timeline(self):
-        num_pages       = 3
+        num_pages       = 1
         tweet_per_page  = 200 #一度に読み込むツイート数 = num_pages * tweet_per_page
 
         max_id = ""
@@ -283,7 +283,7 @@ def sub_process(que):
                 tweet_id = image_name.split("_")[0]
                 que.put(tweet_id)
 
-        twitterAPI_limit_time = 180 - (time.time() - start_time) #HomeTimeLineの読み込みは60秒に1回.あと何秒待つ必要があるか.
+        twitterAPI_limit_time = 65 - (time.time() - start_time) #HomeTimeLineの読み込みは60秒に1回.あと何秒待つ必要があるか.
         if twitterAPI_limit_time > 0:
             time.sleep(twitterAPI_limit_time)
 
@@ -301,7 +301,7 @@ def main():
             tweet_id = que.get()
             api.PostRetweet(tweet_id)
             print(str(tweet_id) + ":リツイートしました")
-            time.sleep(36) #36秒以下にするとAPI制限にかかる.
+            time.sleep(40) #36秒以下にするとAPI制限にかかる.
         except:
             print("リツイート済み")
 
