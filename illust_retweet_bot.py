@@ -84,20 +84,20 @@ class TwitterImageDownloader():
         if not file_name in file_list:
             save_path = os.path.join(save_dir, file_name)
             try:
-                print("download", url_large)
+                #print("download", url_large)
                 url_req = urllib.request.urlopen(url_large)
             except Exception as e:
                 print("url open error", url_large, e)
             else:
-                print("saving", save_path)
+                #print("saving", save_path)
                 img_read = url_req.read()
                 img = open(save_path, 'wb')
                 img.write(img_read)
                 img.close()
                 new_file_name = file_name #新たに保存したファイル.保存されたファイルは除外する.
                 time.sleep(1)
-        else:
-            print("file already exists", file_name)
+        #else:
+            #print("file already exists", file_name)
 
         return new_file_name
  
@@ -112,7 +112,7 @@ class TwitterImageDownloader():
         for j, url in enumerate(url_list):
             new_file_name = self.get_file(url, file_list, save_dir, media_id_list[j])
             new_file_list.append(new_file_name)
-            print(str(j+1) + "/" + str(num_urls) + "pictures")
+            #print(str(j+1) + "/" + str(num_urls) + "pictures")
         
         new_file_list = [x for x in new_file_list if x] #空の要素を削除する.
 
@@ -269,6 +269,7 @@ def sub_process(que):
     while True:
         start_time = time.time()
         new_file_list = tw.download() #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる.
+        print("新しい画像の枚数: " + str(len(new_file_list)))
 
         for image_name in new_file_list:
             image_path = os.path.join(input_dir,image_name)
