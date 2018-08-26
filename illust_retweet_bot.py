@@ -70,10 +70,11 @@ class TwitterImageDownloader():
         return url_list, media_id_list
  
     def create_folder(self, save_dir):
-        try:
-            os.mkdir(save_dir)
-        except Exception as e:
-            print("cannot make dir", e)
+        if not os.path.isdir(save_dir):
+            try:
+                os.mkdir(save_dir)
+            except Exception as e:
+                print("cannot make dir", e)
         file_list = os.listdir(save_dir)
         return file_list
  
@@ -107,7 +108,7 @@ class TwitterImageDownloader():
         file_list = self.create_folder(save_dir)
 
         url_list, media_id_list = self.get_timeline()
-        num_urls = len(url_list)
+        #num_urls = len(url_list)
         
         for j, url in enumerate(url_list):
             new_file_name = self.get_file(url, file_list, save_dir, media_id_list[j])
@@ -296,12 +297,12 @@ def main():
     illust_pred.start() #サブプロセスを開始
 
     while True:
-        print("残りのキュー:" + str(que.qsize()))
 
         try:
             tweet_id = que.get()
             api.PostRetweet(tweet_id)
             print(str(tweet_id) + ":リツイートしました")
+            print("残りのキュー:" + str(que.qsize()))
             time.sleep(40) #36秒以下にするとAPI制限にかかる.
         except:
             print("リツイート済み")
