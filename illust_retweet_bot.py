@@ -8,22 +8,19 @@ pip install python-twitter
 pip install twython
 pip install opencv-python
 """
-import os
+from pathlib import Path
 import time
+import datetime
 import urllib.request, urllib.error, urllib.parse
 from twython import Twython
 import twitter
 import cv2
-import sys
 import numpy as np
 import nnabla as nn
 import nnabla.functions as F
 import nnabla.parametric_functions as PF
 import multiprocessing as mp
-########################################保存先の指定など#########################################################
-save_dir_name = "2018_06_10" #画像を保存するフォルダ名
-current_dir = os.path.dirname(__file__) #このファイルまでの絶対パス
-input_dir = os.path.join(current_dir,save_dir_name) #Twitterから収集した画像が保存されるフォルダ
+
 ################################################################################################################
 #4つの鍵を入力する
 # Consumer key
@@ -42,8 +39,15 @@ class TwitterImageDownloader():
     """
     def __init__(self):
         self.twitter =Twython(app_key=CK, app_secret=CS, oauth_token=ATK, oauth_token_secret=ATS)
+        self.current_dir = Path(__file__).parent.resolve() #このファイルまでの絶対パス
+        self.save_dir = self.__create_today_dir()
+        self.dir_list = self.__get_dir_list()
      
-    def get_timeline(self):
+    def __get_timeline(self):
+        """
+        TimeLineからツイートを読み込み，画像つきのツイートのTweet IDを取得する．
+        画像のURLとTweet IDのリストを返す．
+        """
         num_pages       = 1
         tweet_per_page  = 200 #一度に読み込むツイート数 = num_pages * tweet_per_page
 
@@ -69,51 +73,68 @@ class TwitterImageDownloader():
 
         return url_list, media_id_list
  
-    def create_folder(self, save_dir):
-        if not os.path.isdir(save_dir):
-            try:
-                os.mkdir(save_dir)
-            except Exception as e:
-                print("cannot make dir", e)
-        file_list = os.listdir(save_dir)
-        return file_list
+    def __create_today_dir(self):
+        """
+        日付のディレクトリを作成し，そのパスを返す．
+        """
+        today = datetime.date.today()
+        save_dir = self.current_dir / str(today) #フォルダ名は日付にする
+        if not save_dir.exists():
+            save_dir.mkdir()
+        return save_dir
  
-    def get_file(self, url, file_list, save_dir, tweet_id):
+    def __get_dir_list(self):
+        """
+        実行ファイル直下のディレクトリ一覧のリストを返す．
+        """
+        dir_list = []
+        for p in self.current_dir.glob("*"):
+            if p.is_dir():
+                dir_list.append(p)
+        return dir_list
+
+    def __get_new_file(self, url, tweet_id):
+        """
+        "tweet_ID"_"URL"_".jpg"の書式でTweetに添付されたイメージを保存する．
+        すでにダウンロード済みであれば，new_file_nameはからの文字列にする．
+        """
         new_file_name = ""
         file_name = str(tweet_id) + "_" + url[url.rfind("/")+1:] #tweet_ID_URL.jpg. これをリツイート時に利用する.
         url_large = "%s:large"%(url)
-        if not file_name in file_list:
-            save_path = os.path.join(save_dir, file_name)
+
+        new_img_flag = True #すでに保存されたイメージであればFalseにする．
+        for dir_path in self.dir_list:
+            img_path = dir_path / file_name
+            if img_path.exists():
+                new_img_flag = False
+                break
+
+        if new_img_flag:
+            save_path = self.save_dir / file_name
             try:
-                #print("download", url_large)
                 url_req = urllib.request.urlopen(url_large)
             except Exception as e:
                 print("url open error", url_large, e)
             else:
-                #print("saving", save_path)
                 img_read = url_req.read()
                 img = open(save_path, 'wb')
                 img.write(img_read)
                 img.close()
                 new_file_name = file_name #新たに保存したファイル.保存されたファイルは除外する.
                 time.sleep(1)
-        #else:
-            #print("file already exists", file_name)
 
         return new_file_name
  
     def download(self):
-        new_file_list = []
-        save_dir  = os.path.join(current_dir, save_dir_name)
-        file_list = self.create_folder(save_dir)
-
-        url_list, media_id_list = self.get_timeline()
-        #num_urls = len(url_list)
+        """
+        ダウンロード済みでないイメージを保存し，新たに保存したイメージのファイル名のリストを返す．
+        """
+        url_list, media_id_list = self.__get_timeline()
         
-        for j, url in enumerate(url_list):
-            new_file_name = self.get_file(url, file_list, save_dir, media_id_list[j])
+        new_file_list = []
+        for url, media_id in zip(url_list, media_id_list):
+            new_file_name = self.__get_new_file(url, media_id)
             new_file_list.append(new_file_name)
-            #print(str(j+1) + "/" + str(num_urls) + "pictures")
         
         new_file_list = [x for x in new_file_list if x] #空の要素を削除する.
 
@@ -125,17 +146,11 @@ class Predict():
     戻り値には,その推論の結果を返す.
     """
     def __init__(self):
-        #パラメタの初期化
-        nn.clear_parameters()
-
-        #入力変数の準備
-        self.x = nn.Variable((1,3,256,256)) #(枚数,色,高さ,幅)
-
-        #パラメタの読み込み
-        nn.load_parameters(os.path.join(current_dir,"parameters.h5"))
-
-        #推論ネットワークの構築
-        self.y = self.network(self.x,test=True) 
+        self.current_dir = Path(__file__).parent.resolve() #このファイルまでの絶対パス
+        nn.clear_parameters() #パラメタの初期化
+        self.x = nn.Variable((1,3,256,256)) #入力変数の準備 (枚数,色,高さ,幅)
+        nn.load_parameters(self.current_dir / "parameters.h5") #パラメタの読み込み
+        self.y = self.network(self.x,test=True) #推論ネットワークの構築
 
     def network(self, x, test=False):
         # Input:x -> 3,256,256
@@ -228,7 +243,7 @@ class Predict():
         x = 0 #トリミング始点
         y = 0 #トリミング始点
 
-        img = cv2.imread(image_path)
+        img = cv2.imread(str(image_path))
         size_x = img.shape[1]
         size_y = img.shape[0]
 
@@ -264,24 +279,24 @@ def sub_process(que):
     """
     タイムラインから画像を取得し、その画像に対して推論を行い、イラストのTweetIDをキューに追加する動作を繰り返す.
     """
-    pred = Predict() #ネットワークが形成される.
-    tw = TwitterImageDownloader()
+    pred = Predict() #CNNが形成される.
 
     while True:
+        tw = TwitterImageDownloader()
         start_time = time.time()
-        new_file_list = tw.download() #タイムラインから画像がダウンロードされ,新たに保存したファイルのリストが返ってくる.
+        new_file_list = tw.download() #タイムラインから画像がダウンロードされ,新たに保存したファイル名のリストが返ってくる.
         print("新しい画像の枚数: " + str(len(new_file_list)))
 
         for image_name in new_file_list:
-            image_path = os.path.join(input_dir,image_name)
+            image_path = tw.save_dir / image_name
             
             try:
                 y = pred.pred(image_path) #推論の実行
             except:
-                y = 1
+                y = 1 #写真として処理
                 print("エラーが発生しました")
 
-            if y<0.5: #イラスト
+            if y < 0.5: #イラスト
                 tweet_id = image_name.split("_")[0]
                 que.put(tweet_id)
 
@@ -303,7 +318,7 @@ def main():
             api.PostRetweet(tweet_id)
             print(str(tweet_id) + ":リツイートしました")
             print("残りのキュー:" + str(que.qsize()))
-            time.sleep(40) #36秒以下にするとAPI制限にかかる.
+            time.sleep(37) #36秒以下にするとAPI制限にかかる.
         except:
             print("リツイート済み")
 
